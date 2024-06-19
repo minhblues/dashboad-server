@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	error "github.com/minhblues/dashboad-server/error"
+	"github.com/minhblues/dashboad-server/middleware"
 )
 
 var db = make(map[string]string)
@@ -12,6 +14,9 @@ func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	r := gin.Default()
+
+	r.Use(middleware.ErrorHandler())
+	r.Use(gin.Recovery())
 
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
@@ -22,6 +27,14 @@ func setupRouter() *gin.Engine {
 	r.GET("/user/:name", func(c *gin.Context) {
 		user := c.Params.ByName("name")
 		value, ok := db[user]
+
+		_, present := c.GetQuery("name")
+		if !present {
+			err := error.NewHttpError("Query parameter not found", "Name query parameter is required", http.StatusNotFound)
+			c.Error(*err)
+			return
+		}
+
 		if ok {
 			c.JSON(http.StatusOK, gin.H{"user": user, "value": value})
 		} else {
